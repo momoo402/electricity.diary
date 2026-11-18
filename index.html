@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FFFCF6">
+<title>小日子電力簿｜我的用電紀錄</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Huninn&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:light;
+  --paper:#FFFCF6;--white:#FFFEFA;
+  --sage:#A8B995;--forest:#647B5B;--forest-d:#4F6347;--wood:#B78D6B;--wood-d:#8E6B4E;--cream:#F2D99A;--mist:#B8CED0;
+  --sage-l:#D6E0CC;--mist-l:#DCE8E9;--cream-l:#F8EBC6;
+  --sage-t:#EEF2E8;--cream-t:#FBF4DF;--mist-t:#E9F1F1;--wood-t:#F6EDE3;
+  --ink:#3E3A39;--soft:#66725F;--muted:#78826F;--edge:#3E3A39;--divider:#DDD5C2;--line:#3E3A39;--warn:#B5694F;
+  --shadow:0 6px 18px rgba(100,123,91,.12);
+  --bounce:cubic-bezier(.34,1.56,.64,1);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);line-height:1.5;
+  font-family:"jf-openhuninn","Huninn","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
+button,input,select{font:inherit}
+:focus-visible{outline:3px solid var(--mist);outline-offset:2px}
+
+/* ---------- 版面（手機優先） ---------- */
+.wrap{width:min(980px,calc(100% - 28px));margin:auto;padding:14px 0 40px}
+header{display:flex;align-items:center;gap:11px;margin:4px 0 12px}
+h1{font-size:clamp(21px,6vw,28px);margin:0;line-height:1.2;color:var(--forest-d)}
+.sub{font-size:13px;color:var(--muted);margin-top:2px}
+
+/* 插圖共用 */
+svg.draw{fill:none;stroke:var(--line);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
+.fs{fill:var(--sage)}.ff{fill:var(--forest)}.fw{fill:var(--wood)}.fwd{fill:var(--wood-d)}.fc{fill:var(--cream)}.fm{fill:var(--mist)}
+.fp{fill:#FFFDF8}.fsl{fill:var(--sage-l)}.fml{fill:var(--mist-l)}.fcl{fill:var(--cream-l)}.ffd{fill:var(--forest-d)}.fsky{fill:#EAF2F0}.fi{fill:var(--line)}
+.ns{stroke:none}.thin{stroke-width:1.2}
+
+/* ---------- 頂部分頁列 ---------- */
+.tabs{position:sticky;top:0;z-index:20;background:var(--paper);border-bottom:3px solid var(--edge);padding-top:env(safe-area-inset-top)}
+.tabs-in{width:min(980px,calc(100% - 28px));margin:auto;display:flex;align-items:center;gap:8px;padding:8px 0}
+.logo{width:38px;height:38px;border:2px solid var(--edge);border-radius:13px;background:var(--sage-l);display:grid;place-items:center;flex:none}
+.logo svg{width:20px;height:26px;transform-origin:50% 10%;animation:wobble 3.6s ease-in-out infinite;stroke-width:2.6}
+.tablist{display:flex;align-items:center;gap:2px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none;padding:3px 2px}
+.tablist::-webkit-scrollbar{display:none}
+.tab{flex:none;display:inline-flex;align-items:center;gap:5px;min-height:42px;padding:6px 8px;border:2px solid transparent;border-radius:99px;background:transparent;color:var(--ink);
+  font-size:14px;white-space:nowrap;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background .2s,transform .25s var(--bounce)}
+.tab svg{display:none;width:20px;height:20px;flex:none;stroke-width:2.6}
+.tab:active{transform:scale(.94)}
+.tab[aria-selected=true]{background:var(--cream);border-color:var(--edge);padding:6px 12px 6px 9px;animation:pill-pop .5s var(--bounce)}
+.tab[aria-selected=true] svg{display:block;animation:hop .6s var(--bounce)}
+
+/* ---------- 情境區 ---------- */
+.hero{border:2px solid var(--edge);border-radius:24px;background:var(--cream-t);padding:14px 14px 14px 18px;display:flex;align-items:center;
+  justify-content:space-between;gap:6px;margin:0 0 18px;box-shadow:var(--shadow);overflow:hidden;transition:background .35s}
+.hero[data-tab=meter]{background:var(--mist-t)}
+.hero[data-tab=appliance]{background:var(--sage-t)}
+.hero-text{min-width:0}
+.hero h2{font-size:19px;margin:0 0 5px;color:var(--forest-d)}
+.hero p{font-size:13px;color:var(--soft);line-height:1.7;margin:0}
+.scenes{flex:none;width:112px;height:88px;position:relative}
+.scene{position:absolute;inset:0;width:100%;height:100%;display:none}
+.hero[data-tab=home] .scene-home,.hero[data-tab=meter] .scene-meter,
+.hero[data-tab=bill] .scene-bill,.hero[data-tab=appliance] .scene-app{display:block}
+/* 總覽：只有插圖，沒有文字方框 */
+.hero[data-tab=home]{padding:0;display:block;background:#EAF2F0;max-width:760px;margin-inline:auto}
+.hero[data-tab=home] .hero-text{display:none}
+.hero[data-tab=home] .scenes{width:100%;height:auto;aspect-ratio:360/200}
+.hero[data-tab=home] .scene{overflow:hidden}
+.replay{animation:pop-in .6s var(--bounce)}
+.scenes.replay{animation:scene-pop .75s var(--bounce)}
+.hero[data-tab=home] .scenes.replay{animation:pop-in .6s var(--bounce)}
+
+/* ---------- 分頁內容 ---------- */
+.section{display:none}
+.section.active{display:block}
+.section.active>*{animation:pop-in .55s var(--bounce) backwards}
+.section.active>:nth-child(2){animation-delay:.05s}.section.active>:nth-child(3){animation-delay:.1s}
+.section.active>:nth-child(4){animation-delay:.15s}.section.active>:nth-child(5){animation-delay:.2s}
+.section.active>:nth-child(6){animation-delay:.25s}.section.active>:nth-child(7){animation-delay:.3s}
+.section-title{font-size:18px;margin:18px 0 11px;display:flex;align-items:center;gap:9px;color:var(--forest-d)}
+.section-title:first-child{margin-top:2px}
+.section-title:before{content:"";width:13px;height:13px;background:var(--sage);border:1.5px solid var(--edge);border-radius:0 100% 0 100%;flex:none}
+
+.cards{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.card:nth-child(3){grid-column:span 2}
+.card,.panel{border:2px solid var(--edge);border-radius:20px;background:var(--white);padding:15px;box-shadow:var(--shadow)}
+.card{position:relative}
+.card:nth-child(1){background:var(--sage-t)}.card:nth-child(2){background:var(--cream-t)}.card:nth-child(3){background:var(--mist-t)}
+.card .ico{position:absolute;right:12px;top:12px;width:28px;height:28px;stroke-width:2.6;animation:float 3.6s ease-in-out infinite}
+.kicker{font-size:13px;color:var(--soft);padding-right:34px}
+.metric{font-size:26px;font-weight:bold;margin:7px 0 2px;word-break:break-all;color:var(--forest-d)}
+.unit{font-size:12px;color:var(--soft)}
+
+.form-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.form-grid.ap{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.form-grid.ap .field:first-child{grid-column:1/-1}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.field{min-width:0}
+.field label{display:block;font-size:14px;margin:0 0 6px;color:var(--soft)}
+.field input,.field select{display:block;width:100%;max-width:100%;min-width:0;min-height:48px;border:2px solid var(--edge);border-radius:14px;background:#fff;padding:10px 12px;color:var(--ink);outline:none;font-size:16px;
+  -webkit-appearance:none;appearance:none;line-height:1.3;transition:border-color .2s,box-shadow .2s}
+.field input[type=date]{text-align:left;overflow:hidden}
+.field input[type=date]::-webkit-date-and-time-value{text-align:left;min-height:1.4em;margin:0}
+.field input[type=date]::-webkit-calendar-picker-indicator{margin:0 0 0 4px;padding:0;opacity:.6}
+.field input:focus,.field select:focus{box-shadow:0 0 0 3px rgba(168,185,149,.45)}
+.hint{font-size:12px;color:var(--muted);margin-top:7px;line-height:1.65}
+
+.actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px}
+.btn{flex:1 1 140px;min-height:48px;border:2px solid var(--edge);border-radius:14px;padding:9px 16px;background:var(--forest);color:#fff;
+  box-shadow:0 3px 0 var(--edge);cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:transform .25s var(--bounce),box-shadow .15s}
+.btn:active{transform:translateY(3px) scale(.97);box-shadow:0 0 0 var(--edge)}
+.btn.blue{background:var(--mist);color:var(--ink)}
+.btn.sage{background:var(--sage-l);color:var(--forest-d)}
+.btn.pink{background:var(--wood-t);color:var(--wood-d)}
+.btn.danger{background:var(--warn)}
+.btn.small{flex:none;min-height:40px;padding:5px 14px;font-size:13px;border-radius:12px}
+@media(hover:hover){.btn:hover{transform:translateY(-2px)}.btn:active{transform:translateY(3px) scale(.97)}}
+.toast{font-size:13px;color:var(--forest);min-height:20px;margin-top:8px}
+.toast.err{color:var(--warn)}
+.toast.pop{animation:pop-in .5s var(--bounce)}
+
+.chart-wrap{height:200px}
+canvas{width:100%;height:100%;display:block}
+
+/* 表格：手機變成一張張小卡片 */
+.table-wrap thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+table,tbody,tr,td{display:block;width:100%}
+tr{border:2px solid var(--edge);border-radius:16px;padding:6px 14px;margin-bottom:10px;background:var(--paper)}
+tr:last-child{margin-bottom:0}
+td{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:7px 0;border-bottom:1px dashed var(--divider);text-align:right;font-size:14px}
+td:last-child{border-bottom:0}
+td::before{content:attr(data-label);color:var(--soft);text-align:left;flex:none;font-size:13px}
+td.act{justify-content:flex-end;padding-top:9px}td.act::before,td.msg::before{display:none}
+td.msg{justify-content:center;text-align:center;color:var(--muted)}
+.table-wrap tbody tr:has(td.msg){border-style:dashed;background:transparent}
+
+.empty{text-align:center;padding:14px 8px 6px;color:var(--muted);font-size:14px}
+.empty svg{width:72px;height:72px;display:block;margin:0 auto 6px}
+
+.budgetbar{height:16px;border:2px solid var(--edge);border-radius:20px;overflow:hidden;background:#F1EEE0;margin:11px 0}
+.budgetbar span{height:100%;display:block;background:var(--forest);width:0;transition:width .7s var(--bounce);border-radius:20px}
+.budgetbar span.over{background:var(--warn)}
+.pill{display:inline-block;border:2px solid var(--edge);border-radius:99px;padding:3px 12px;font-size:12px;background:var(--sage-t);color:var(--forest-d)}
+.footer{text-align:center;color:var(--muted);font-size:12px;margin-top:26px;line-height:1.8}
+
+/* ---------- 刪除確認視窗與復原提示 ---------- */
+.modal{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:20px;background:rgba(62,74,58,.38)}
+.modal[hidden]{display:none}
+.dialog{width:min(360px,100%);background:var(--white);border:2px solid var(--edge);border-radius:24px;padding:20px 18px 18px;box-shadow:0 18px 44px rgba(62,74,58,.28);text-align:center;animation:pop-in .45s var(--bounce)}
+.dialog svg{width:58px;height:58px;margin:0 auto 4px;display:block}
+.dialog h4{margin:0 0 4px;font-size:18px;color:var(--forest-d)}
+.dialog .detail{background:var(--cream-t);border:1.5px dashed var(--edge);border-radius:14px;padding:9px 12px;font-size:14px;margin:10px 0;word-break:break-all}
+.dialog p{font-size:13px;color:var(--soft);margin:0 0 14px;line-height:1.7}
+.dialog .row{display:flex;gap:10px}
+.dialog .row .btn{flex:1}
+.snack{position:fixed;left:0;right:0;margin:auto;width:max-content;max-width:calc(100% - 28px);bottom:calc(18px + env(safe-area-inset-bottom));z-index:90;
+  display:flex;align-items:center;gap:12px;background:var(--forest-d);color:#fff;border-radius:16px;padding:9px 10px 9px 16px;font-size:14px;box-shadow:0 10px 26px rgba(62,74,58,.3);animation:pop-in .45s var(--bounce)}
+.snack[hidden]{display:none}
+.snack button{background:var(--cream);color:var(--ink);border:0;border-radius:10px;padding:6px 14px;min-height:36px;cursor:pointer}
+
+/* ---------- 動畫 ---------- */
+[class*="an-"]{transform-box:fill-box;transform-origin:center}
+.an-float{animation:float 3.6s ease-in-out infinite}
+.an-drift{animation:drift 8s ease-in-out infinite}
+.an-twinkle{animation:twinkle 2.8s ease-in-out infinite}
+.an-glow{animation:glow 3s ease-in-out infinite}
+.an-spin{animation:spin 8s linear infinite}
+.an-fan{animation:spin 2.4s linear infinite}
+.an-wiggle{animation:wiggle 3.4s ease-in-out infinite}
+.an-smoke{animation:smoke 4s ease-out infinite}
+.an-squish{animation:squish 3s ease-in-out infinite;transform-origin:50% 100%}
+.an-coin{animation:coindrop 3s ease-in infinite}
+.an-sway{animation:sway 4.2s ease-in-out infinite;transform-origin:50% 100%}
+.an-fly{animation:fly 5s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes drift{0%,100%{transform:translateX(-6px)}50%{transform:translateX(8px)}}
+@keyframes twinkle{0%,100%{transform:scale(.7);opacity:.45}50%{transform:scale(1.1);opacity:1}}
+@keyframes glow{0%,100%{transform:scale(.9);opacity:.35}50%{transform:scale(1.1);opacity:.85}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes wobble{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
+@keyframes wiggle{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+@keyframes sway{0%,100%{transform:rotate(-1.8deg)}50%{transform:rotate(1.8deg)}}
+@keyframes smoke{0%{transform:translateY(4px) scale(.6);opacity:0}30%{opacity:.95}100%{transform:translate(8px,-18px) scale(1.25);opacity:0}}
+@keyframes squish{0%,100%{transform:scale(1,1)}50%{transform:scale(1.03,.97)}}
+@keyframes coindrop{0%{transform:translateY(-2px);opacity:0}15%{opacity:1}75%{transform:translateY(20px);opacity:1}100%{transform:translateY(26px);opacity:0}}
+@keyframes fly{0%,100%{transform:translate(0,0);opacity:.3}25%{transform:translate(5px,-7px);opacity:1}50%{transform:translate(-3px,-12px);opacity:.6}75%{transform:translate(-7px,-4px);opacity:1}}
+@keyframes hop{0%{transform:translateY(0) scale(1,1)}30%{transform:translateY(-7px) scale(.92,1.1)}60%{transform:translateY(0) scale(1.15,.85)}100%{transform:none}}
+@keyframes pop-in{0%{opacity:0;transform:translateY(18px) scale(.94)}60%{opacity:1;transform:translateY(-3px) scale(1.015)}100%{opacity:1;transform:none}}
+@keyframes pill-pop{0%{transform:scale(.8)}60%{transform:scale(1.08)}100%{transform:none}}
+@keyframes scene-pop{0%{opacity:0;transform:scale(.6) rotate(-6deg)}100%{opacity:1;transform:none}}
+
+/* 減少動態效果：全部靜止，內容照常顯示 */
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+
+/* ---------- 較寬螢幕 ---------- */
+@media(min-width:700px){
+  table{display:table;min-width:0;width:100%;border-collapse:collapse;font-size:13px}
+  .table-wrap thead{position:static;width:auto;height:auto;overflow:visible;clip:auto;display:table-header-group}
+  tbody{display:table-row-group}
+  tr{display:table-row;border:0;border-radius:0;padding:0;margin:0;background:transparent}
+  td{display:table-cell;width:auto;text-align:left;padding:10px 8px;border-bottom:1px dashed var(--divider)}
+  td:last-child{border-bottom:1px dashed var(--divider)}
+  td::before{display:none}
+  td.act{text-align:left;padding-top:10px}
+  .table-wrap tbody tr:has(td.msg){border-style:solid;background:transparent}
+  th{text-align:left;padding:10px 8px;color:var(--soft);font-weight:normal;border-bottom:1.5px solid var(--divider)}
+  td.msg{text-align:center}
+}
+@media(min-width:760px){
+  .tab{font-size:16px;padding:6px 14px}
+  .tab[aria-selected=true]{padding:6px 16px 6px 12px}
+  .hero{padding:18px 26px}
+  .hero h2{font-size:22px}.hero p{font-size:14px}
+  .scenes{width:170px;height:134px}
+  .cards{grid-template-columns:repeat(3,minmax(0,1fr))}.card:nth-child(3){grid-column:auto}
+  .form-grid,.form-grid.ap{grid-template-columns:repeat(3,minmax(0,1fr))}.form-grid.ap .field:first-child{grid-column:auto}
+  .grid2{grid-template-columns:1fr 1fr}
+  .btn{flex:none}
+  .chart-wrap{height:240px}
+}
+@media(max-width:350px){.scenes{width:92px;height:72px}.tab{font-size:13px}}
+</style></head>
+<body>
+
+<!-- 共用小圖示（手繪 SVG） -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <symbol id="i-bulb" viewBox="0 0 40 52">
+    <path class="fc" d="M20 3C10 3 3 10 3 19c0 7 5 10 8 15v4h18v-4c3-5 8-8 8-15C37 10 30 3 20 3z"/>
+    <path class="thin" d="M16 36V27l4-6 4 6v9" stroke-width="1.6"/>
+    <rect class="fw" x="11" y="38" width="18" height="8" rx="3"/>
+    <path class="ffd ns" d="M15 46h10v1a5 5 0 0 1-10 0z"/>
+  </symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 32"><path class="fc" d="M14 3L4 18h7l-2 11 11-16h-7z"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 20 20"><path class="fc" stroke-width="1.6" d="M10 1Q11 9 19 10Q11 11 10 19Q9 11 1 10Q9 9 10 1Z"/></symbol>
+  <symbol id="i-coin" viewBox="0 0 32 32">
+    <circle class="fc" cx="16" cy="16" r="13"/>
+    <circle cx="16" cy="16" r="8.5" stroke-width="1.4"/>
+    <path d="M19 12.5c-.8-1.6-5.4-1.6-6 .5 0 3 6 1.5 6 4.5 0 2.3-5.2 2.3-6.2.5M16 9.5v13" stroke-width="1.6"/>
+  </symbol>
+  <symbol id="i-plug" viewBox="0 0 32 32">
+    <path d="M11.5 12V4M20.5 12V4" stroke-width="3"/>
+    <rect class="fs" x="6" y="11" width="20" height="14" rx="6"/>
+    <path d="M16 25v1.5q0 3.5 5 3.5"/>
+  </symbol>
+  <symbol id="i-target" viewBox="0 0 32 32">
+    <circle class="fs" cx="16" cy="16" r="13"/><circle class="fp" cx="16" cy="16" r="8.5" stroke-width="1.6"/><circle class="ff" cx="16" cy="16" r="3" stroke-width="1.4"/>
+  </symbol>
+  <symbol id="i-pine" viewBox="0 0 50 70">
+    <rect class="fwd" x="22" y="58" width="6" height="12" rx="1"/>
+    <path class="ff" d="M25 28L46 60H4Z"/><path class="ff" d="M25 14L42 42H8Z"/><path class="ff" d="M25 2L38 26H12Z"/>
+  </symbol>
+  <symbol id="i-pine2" viewBox="0 0 50 70">
+    <rect class="fwd" x="22" y="58" width="6" height="12" rx="1"/>
+    <path class="fs" d="M25 28L46 60H4Z"/><path class="fs" d="M25 14L42 42H8Z"/><path class="fs" d="M25 2L38 26H12Z"/>
+  </symbol>
+  <symbol id="i-sprout" viewBox="0 0 20 20">
+    <path d="M10 19V9"/><path class="fs" d="M10 11C4 11 2 6 2 3 7 3 10 6 10 11Z"/><path class="fs" d="M10 9C10 5 13 2 18 2 18 7 15 9 10 9Z"/>
+  </symbol>
+</defs></svg>
+
+<nav class="tabs">
+  <div class="tabs-in">
+    <div class="logo" aria-hidden="true"><svg class="draw" viewBox="0 0 40 52"><use href="#i-bulb" width="40" height="52"/></svg></div>
+    <div class="tablist" role="tablist" aria-label="功能分頁">
+      <button type="button" class="tab" role="tab" id="t-home" aria-controls="home" aria-selected="true" data-tab="home">
+        <svg class="draw" viewBox="0 0 32 32" aria-hidden="true"><rect class="fw" x="7" y="15" width="18" height="13" rx="1.5"/><path class="ff" d="M3 17L16 5l13 12z"/><path class="fc" d="M13 28v-5a3 3 0 0 1 6 0v5z"/></svg>總覽</button>
+      <button type="button" class="tab" role="tab" id="t-meter" aria-controls="meter" aria-selected="false" data-tab="meter">
+        <svg class="draw" viewBox="0 0 32 32" aria-hidden="true"><rect class="fc" x="6" y="4" width="20" height="24" rx="4"/><path d="M11 11h10M11 16h10M11 21h5" stroke-width="2"/></svg>抄表紀錄</button>
+      <button type="button" class="tab" role="tab" id="t-bill" aria-controls="bill" aria-selected="false" data-tab="bill">
+        <svg class="draw" viewBox="0 0 32 32" aria-hidden="true"><use href="#i-coin" width="32" height="32"/></svg>電費與預算</button>
+      <button type="button" class="tab" role="tab" id="t-appliance" aria-controls="appliance" aria-selected="false" data-tab="appliance">
+        <svg class="draw" viewBox="0 0 32 32" aria-hidden="true"><use href="#i-plug" width="32" height="32"/></svg>電器分析</button>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+<header>
+  <div><h1>小日子電力簿</h1><div class="sub">把每一度電，記錄成生活的日常</div></div>
+</header>
+
+<section class="hero" id="hero" data-tab="home">
+  <div class="hero-text" id="heroText"><h2 id="greeting">今天也好好過生活</h2><p id="heroDesc"></p></div>
+  <div class="scenes" id="scenes" aria-hidden="true">
+
+    <!-- 總覽：森林小屋（整幅插圖，取代原本的文字方框） -->
+    <svg class="draw scene scene-home" viewBox="0 0 360 200" preserveAspectRatio="xMidYMid slice">
+      <rect class="fsky ns" width="360" height="200"/>
+      <circle class="fcl ns an-glow" cx="58" cy="36" r="30"/>
+      <circle class="fc" cx="58" cy="36" r="15"/>
+      <g class="an-drift"><path class="fp" d="M246 40H282A8 8 0 0 0 282 24A12 12 0 0 0 261 20A10 10 0 0 0 246 28A6 6 0 0 0 246 40Z"/></g>
+      <g transform="translate(-70 10) scale(.8)"><g class="an-drift" style="animation-delay:-3s"><path class="fp" d="M246 40H282A8 8 0 0 0 282 24A12 12 0 0 0 261 20A10 10 0 0 0 246 28A6 6 0 0 0 246 40Z"/></g></g>
+      <path class="fml ns" d="M0 128Q60 96 130 120T250 112T360 118V200H0Z"/>
+      <g class="an-sway"><use href="#i-pine2" x="70" y="104" width="24" height="34"/></g>
+      <g class="an-sway"><use href="#i-pine2" x="90" y="112" width="20" height="28"/></g>
+      <g class="an-sway"><use href="#i-pine2" x="262" y="98" width="26" height="38"/></g>
+      <path class="fsl ns" d="M0 146Q70 126 150 144T290 138T360 142V200H0Z"/>
+      <path class="fs ns" d="M0 166Q90 152 180 160T360 156V200H0Z"/>
+      <path d="M160 162Q148 174 168 182T156 198" stroke="#F2D99A" stroke-width="12" fill="none"/>
+
+      <g class="an-sway"><use href="#i-pine" x="12" y="92" width="52" height="72"/></g>
+      <g class="an-sway" style="animation-delay:-1.5s"><use href="#i-pine2" x="56" y="118" width="32" height="46"/></g>
+      <g class="an-sway" style="animation-delay:-2.5s"><use href="#i-pine" x="298" y="84" width="54" height="78"/></g>
+      <g class="an-sway" style="animation-delay:-1s"><use href="#i-pine2" x="268" y="114" width="34" height="48"/></g>
+
+      <!-- 電線桿與電線 -->
+      <path d="M246 162V84" stroke="#8E6B4E" stroke-width="4"/>
+      <path d="M236 90H256" stroke="#8E6B4E" stroke-width="3"/>
+      <circle class="fm" cx="237" cy="89" r="2.4" stroke-width="1.2"/><circle class="fm" cx="255" cy="89" r="2.4" stroke-width="1.2"/>
+      <path d="M237 91Q222 108 204 111" stroke-width="1.3"/>
+      <g class="an-twinkle"><use href="#i-bolt" x="240" y="104" width="12" height="16"/></g>
+
+      <!-- 小屋 -->
+      <rect class="fsl" x="185" y="60" width="14" height="30" rx="1"/>
+      <g class="an-smoke"><circle class="fp" cx="192" cy="54" r="4" stroke-width="1.4"/></g>
+      <g class="an-smoke" style="animation-delay:-1.3s"><circle class="fp" cx="192" cy="54" r="3.4" stroke-width="1.4"/></g>
+      <g class="an-smoke" style="animation-delay:-2.6s"><circle class="fp" cx="192" cy="54" r="3" stroke-width="1.4"/></g>
+      <rect class="fw" x="108" y="100" width="104" height="60" rx="3"/>
+      <path d="M108 114H212M108 128H212M108 142H212" stroke="#8E6B4E" stroke-width="1.2" opacity=".55"/>
+      <path class="ff" d="M96 106L160 56L224 106Z"/>
+      <path d="M110 98L160 66L210 98" stroke="#A8B995" stroke-width="1.6" stroke-dasharray="3 4"/>
+      <circle class="fc ns an-glow" cx="160" cy="88" r="13"/>
+      <circle class="fc" cx="160" cy="88" r="8"/><path d="M160 80V96M152 88H168" stroke-width="1.4"/>
+      <path class="fwd" d="M148 160V134a12 12 0 0 1 24 0V160Z"/>
+      <circle class="fc ns" cx="167" cy="148" r="1.8"/>
+      <rect class="fc ns an-glow" x="113" y="118" width="32" height="30" rx="7"/>
+      <rect class="fc" x="118" y="122" width="22" height="20" rx="3"/><path d="M129 122V142M118 132H140" stroke-width="1.4"/>
+      <rect class="fwd" x="115" y="142" width="28" height="6" rx="2"/>
+      <circle class="fs" cx="121" cy="140" r="2.6" stroke-width="1.2"/><circle class="fc" cx="129" cy="139" r="2.6" stroke-width="1.2"/><circle class="fm" cx="137" cy="140" r="2.6" stroke-width="1.2"/>
+      <rect class="fc ns an-glow" x="175" y="118" width="32" height="30" rx="7" style="animation-delay:-1.4s"/>
+      <rect class="fc" x="180" y="122" width="22" height="20" rx="3"/><path d="M191 122V142M180 132H202" stroke-width="1.4"/>
+      <rect class="fwd" x="177" y="142" width="28" height="6" rx="2"/>
+      <circle class="fm" cx="183" cy="140" r="2.6" stroke-width="1.2"/><circle class="fs" cx="191" cy="139" r="2.6" stroke-width="1.2"/><circle class="fc" cx="199" cy="140" r="2.6" stroke-width="1.2"/>
+      <rect class="fm" x="192" y="104" width="14" height="14" rx="2" stroke-width="1.6"/><circle class="fp" cx="199" cy="110" r="4" stroke-width="1.2"/><path d="M199 110V107.5" stroke-width="1.2"/>
+      <!-- 屋簷燈串 -->
+      <path d="M100 106Q130 116 160 106Q190 116 220 106" stroke-width="1.2"/>
+      <circle class="fc an-twinkle" cx="115" cy="109.7" r="2.8" stroke-width="1.2"/>
+      <circle class="fc an-twinkle" style="animation-delay:-.5s" cx="130" cy="111" r="2.8" stroke-width="1.2"/>
+      <circle class="fc an-twinkle" style="animation-delay:-1s" cx="145" cy="109.7" r="2.8" stroke-width="1.2"/>
+      <circle class="fc an-twinkle" style="animation-delay:-1.5s" cx="175" cy="109.7" r="2.8" stroke-width="1.2"/>
+      <circle class="fc an-twinkle" style="animation-delay:-2s" cx="190" cy="111" r="2.8" stroke-width="1.2"/>
+      <circle class="fc an-twinkle" style="animation-delay:-2.4s" cx="205" cy="109.7" r="2.8" stroke-width="1.2"/>
+
+      <use href="#i-sprout" x="88" y="150" width="16" height="16"/>
+      <use href="#i-sprout" x="222" y="152" width="14" height="14"/>
+      <use href="#i-sprout" x="278" y="156" width="16" height="16"/>
+      <!-- 螢火蟲 -->
+      <circle class="fc ns an-fly" cx="86" cy="88" r="2.4"/>
+      <circle class="fc ns an-fly" style="animation-delay:-1.5s" cx="112" cy="64" r="2"/>
+      <circle class="fc ns an-fly" style="animation-delay:-3s" cx="284" cy="68" r="2.4"/>
+      <circle class="fc ns an-fly" style="animation-delay:-2s" cx="326" cy="112" r="2"/>
+      <circle class="fc ns an-fly" style="animation-delay:-.8s" cx="228" cy="70" r="2"/>
+      <circle class="fc ns an-fly" style="animation-delay:-2.6s" cx="40" cy="76" r="2"/>
+    </svg>
+
+    <!-- 抄表：木質電錶＋筆記本 -->
+    <svg class="draw scene scene-meter" viewBox="0 0 140 110">
+      <path d="M8 104H132" stroke="#A8B995"/>
+      <g transform="translate(-14 0)">
+        <rect class="fw" x="40" y="8" width="60" height="88" rx="14"/>
+        <circle class="fml" cx="70" cy="40" r="20"/>
+        <circle class="fp" cx="70" cy="40" r="14" stroke-width="1.4"/>
+        <g class="an-spin"><circle class="fp" cx="70" cy="40" r="10" stroke-width="1.2"/><path d="M70 40V32" stroke-width="2"/><circle class="fc" cx="70" cy="31" r="2" stroke-width="1"/></g>
+        <rect class="fp" x="50" y="66" width="40" height="14" rx="3" stroke-width="1.6"/>
+        <text x="70" y="76.5" text-anchor="middle" class="fi ns" style="font-size:10px">0472.5</text>
+        <circle class="fwd" cx="48" cy="16" r="1.8" stroke-width="1"/><circle class="fwd" cx="92" cy="16" r="1.8" stroke-width="1"/>
+        <circle class="fwd" cx="48" cy="88" r="1.8" stroke-width="1"/><circle class="fwd" cx="92" cy="88" r="1.8" stroke-width="1"/>
+      </g>
+      <g transform="translate(96 60) rotate(6)"><rect class="fc" x="0" y="0" width="26" height="34" rx="3"/><path d="M6 0V34" stroke-width="1.4"/><path d="M11 10h10M11 16h10M11 22h7" stroke-width="1.4"/></g>
+      <g transform="translate(118 56) rotate(30)" stroke-width="1.8"><g class="an-wiggle">
+        <rect class="fs" x="-5" y="-30" width="10" height="7" rx="2.5"/>
+        <rect class="fw" x="-5" y="-23" width="10" height="34"/>
+        <path class="fp" d="M-5 11L0 23L5 11Z"/>
+        <path class="ffd" d="M-1.8 19L0 23L1.8 19Z" stroke-width="1"/>
+      </g></g>
+      <use href="#i-sprout" x="4" y="84" width="18" height="18"/>
+      <g class="an-float"><use href="#i-bolt" x="6" y="30" width="12" height="16"/></g>
+      <circle class="fc ns an-fly" cx="24" cy="18" r="2"/><circle class="fc ns an-fly" style="animation-delay:-2s" cx="122" cy="20" r="2"/>
+    </svg>
+
+    <!-- 電費：玻璃存錢罐 -->
+    <svg class="draw scene scene-bill" viewBox="0 0 140 110">
+      <path d="M8 102H132" stroke="#A8B995"/>
+      <g class="an-coin"><use href="#i-coin" x="61" y="2" width="18" height="18"/></g>
+      <g class="an-squish">
+        <path class="fml" d="M46 36H94V92Q94 100 86 100H54Q46 100 46 92Z"/>
+        <ellipse class="fc" cx="60" cy="94" rx="9" ry="3.5" stroke-width="1.5"/><ellipse class="fc" cx="79" cy="94" rx="9" ry="3.5" stroke-width="1.5"/><ellipse class="fc" cx="69" cy="88.5" rx="9" ry="3.5" stroke-width="1.5"/>
+        <rect class="fw" x="42" y="24" width="56" height="12" rx="3"/>
+        <path d="M56 30H84" stroke="#8E6B4E" stroke-width="2"/>
+        <rect class="fp" x="56" y="48" width="28" height="22" rx="3" stroke-width="1.5"/>
+        <g class="an-twinkle"><use href="#i-bolt" x="64" y="50" width="12" height="18"/></g>
+      </g>
+      <g transform="translate(14 0)"><use href="#i-sprout" x="0" y="80" width="22" height="22"/></g>
+      <ellipse class="fc" cx="114" cy="98" rx="11" ry="4" stroke-width="1.5"/><ellipse class="fc" cx="114" cy="93" rx="11" ry="4" stroke-width="1.5"/><ellipse class="fc" cx="114" cy="88" rx="11" ry="4" stroke-width="1.5"/>
+      <circle class="fc ns an-fly" cx="20" cy="30" r="2"/><circle class="fc ns an-fly" style="animation-delay:-2s" cx="118" cy="40" r="2"/>
+    </svg>
+
+    <!-- 電器：插頭與電風扇 -->
+    <svg class="draw scene scene-app" viewBox="0 0 140 110">
+      <path d="M8 102H132" stroke="#A8B995"/>
+      <path d="M37 84Q37 100 52 100H92" stroke-width="2"/>
+      <g class="an-wiggle">
+        <path d="M31 50V36M43 50V36" stroke-width="4"/>
+        <rect class="fs" x="22" y="50" width="30" height="26" rx="8"/>
+        <path d="M30 60H44M30 66H44" stroke-width="1.4"/>
+        <rect class="ff" x="33" y="76" width="8" height="9" rx="2"/>
+      </g>
+      <path d="M104 72V92" stroke="#8E6B4E" stroke-width="3"/>
+      <rect class="fw" x="90" y="92" width="28" height="10" rx="4"/>
+      <g class="an-fan">
+        <circle class="fp" cx="104" cy="48" r="24"/>
+        <ellipse class="fm" cx="104" cy="37" rx="6" ry="10"/>
+        <ellipse class="fm" cx="104" cy="37" rx="6" ry="10" transform="rotate(120 104 48)"/>
+        <ellipse class="fm" cx="104" cy="37" rx="6" ry="10" transform="rotate(240 104 48)"/>
+        <circle class="fc" cx="104" cy="48" r="4.5"/>
+      </g>
+      <g class="an-float"><use href="#i-bolt" x="62" y="34" width="12" height="16"/></g>
+      <use href="#i-sprout" x="60" y="84" width="14" height="14"/>
+      <circle class="fc ns an-fly" cx="14" cy="24" r="2"/><circle class="fc ns an-fly" style="animation-delay:-2s" cx="78" cy="14" r="2"/>
+    </svg>
+  </div>
+</section>
+
+<main>
+<section class="section active" id="home" role="tabpanel" aria-labelledby="t-home">
+  <h3 class="section-title">我的用電小摘要</h3>
+  <div class="cards">
+    <div class="card"><svg class="draw ico" viewBox="0 0 24 32" aria-hidden="true"><use href="#i-bolt" width="24" height="32"/></svg><div class="kicker">最近區間平均每日用電</div><div class="metric" id="avg">—</div><div class="unit">度／天（kWh）</div></div>
+    <div class="card"><svg class="draw ico" style="animation-delay:.5s" viewBox="0 0 40 52" aria-hidden="true"><use href="#i-bulb" width="40" height="52"/></svg><div class="kicker">本月估算用電</div><div class="metric" id="monthUse">—</div><div class="unit">度（kWh）</div></div>
+    <div class="card"><svg class="draw ico" style="animation-delay:1s" viewBox="0 0 32 32" aria-hidden="true"><use href="#i-coin" width="32" height="32"/></svg><div class="kicker">本月估算電費</div><div class="metric" id="monthCost">—</div><div class="unit">新台幣（NT$）</div></div>
+  </div>
+  <h3 class="section-title">最近用電趨勢</h3>
+  <div class="panel"><div class="chart-wrap"><canvas id="chart" role="img" aria-label="每日平均用電量折線圖"></canvas></div><div class="hint">每個點代表兩次抄表之間的平均每日用電量（度），顯示最近 8 個區間。</div></div>
+  <h3 class="section-title">本月預算小提醒</h3>
+  <div class="panel"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><strong>預算使用進度</strong><span id="budgetText" class="pill">尚未設定預算</span></div><div class="budgetbar"><span id="budgetFill"></span></div><div class="hint" id="budgetHint">到「電費與預算」設定每度電費與每月預算。</div></div>
+</section>
+
+<section class="section" id="meter" role="tabpanel" aria-labelledby="t-meter">
+  <h3 class="section-title">新增電錶紀錄</h3>
+  <div class="panel">
+    <div class="form-grid">
+      <div class="field"><label for="date">抄表日期</label><input id="date" type="date"></div>
+      <div class="field"><label for="reading">電錶目前度數</label><input id="reading" type="number" inputmode="decimal" min="0" step="0.1" placeholder="例如：1234.5"></div>
+      <div class="field"><label for="memo">備註（選填）</label><input id="memo" type="text" maxlength="40" placeholder="例如：月底抄表"></div>
+    </div>
+    <div class="hint">輸入電錶上顯示的「累積度數」，不是這幾天用了幾度。第一次紀錄會作為起始基準。</div>
+    <div class="actions"><button type="button" class="btn" id="saveMeter">＋ 儲存這次紀錄</button><button type="button" class="btn blue" id="export">下載 CSV 紀錄</button></div>
+    <div class="toast" id="meterToast" aria-live="polite"></div>
+  </div>
+  <h3 class="section-title">我的抄表日記</h3>
+  <div class="panel">
+    <div class="table-wrap"><table><thead><tr><th>日期</th><th>電錶度數</th><th>期間用電</th><th>平均／天</th><th>備註</th><th>操作</th></tr></thead><tbody id="records"></tbody></table></div>
+    <div class="empty" id="empty">
+      <svg class="draw" viewBox="0 0 60 60" aria-hidden="true"><g class="an-sway"><path d="M30 38V24"/><path class="fs" d="M30 29C20 29 14 23 14 15C23 15 30 20 30 29Z"/><path class="fs" d="M30 25C30 16 36 10 46 10C46 19 40 25 30 25Z"/></g><path class="fw" d="M18 38H42L39 56H21Z"/></svg>
+      還沒有紀錄，先建立你的第一筆抄表資料吧！</div>
+  </div>
+</section>
+
+<section class="section" id="bill" role="tabpanel" aria-labelledby="t-bill">
+  <h3 class="section-title">電費與每月預算設定</h3>
+  <div class="panel">
+    <div class="grid2">
+      <div class="field"><label for="rate">房東每度收費（NT$）</label><input id="rate" type="number" inputmode="decimal" min="0" step="0.01" placeholder="例如：5"><div class="hint">依照租約或房東實際收費填寫。</div></div>
+      <div class="field"><label for="budget">每月電費預算（NT$）</label><input id="budget" type="number" inputmode="numeric" min="0" step="1" placeholder="例如：1000"><div class="hint">設定想控制的每月電費上限。</div></div>
+    </div>
+    <div class="actions"><button type="button" class="btn" id="saveSettings">儲存設定</button></div>
+    <div class="toast" id="billToast" aria-live="polite"></div>
+  </div>
+  <h3 class="section-title">本月電費估算</h3>
+  <div class="cards">
+    <div class="card"><svg class="draw ico" viewBox="0 0 40 52" aria-hidden="true"><use href="#i-bulb" width="40" height="52"/></svg><div class="kicker">本月估算用電量</div><div class="metric" id="billUse">—</div><div class="unit">度（kWh）</div></div>
+    <div class="card"><svg class="draw ico" style="animation-delay:.5s" viewBox="0 0 32 32" aria-hidden="true"><use href="#i-coin" width="32" height="32"/></svg><div class="kicker">本月估算電費</div><div class="metric" id="billCost">—</div><div class="unit">NT$</div></div>
+    <div class="card"><svg class="draw ico" style="animation-delay:1s" viewBox="0 0 32 32" aria-hidden="true"><use href="#i-target" width="32" height="32"/></svg><div class="kicker">距離預算還有</div><div class="metric" id="remaining">—</div><div class="unit">NT$</div></div>
+  </div>
+  <div class="panel" style="margin-top:13px"><strong>每月用電／電費紀錄</strong>
+    <div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>月份</th><th>估算用電</th><th>估算電費</th></tr></thead><tbody id="monthlyRows"></tbody></table></div>
+    <div class="hint">依抄表區間平均分攤到各月份估算；若抄表次數較少，月統計會是推估值，與電力公司帳單可能不同。</div>
+  </div>
+</section>
+
+<section class="section" id="appliance" role="tabpanel" aria-labelledby="t-appliance">
+  <h3 class="section-title">電器用電小分析</h3>
+  <div class="panel">
+    <p style="font-size:13px;color:var(--soft);margin-top:0;line-height:1.7">填入電器功率、每天大約使用幾小時與數量，幫你估算每月可能耗電。功率可查看電器標籤或說明書。</p>
+    <div class="form-grid ap">
+      <div class="field"><label for="apName">電器名稱</label><input id="apName" type="text" placeholder="例如：冷氣"></div>
+      <div class="field"><label for="watt">功率（瓦 W）</label><input id="watt" type="number" inputmode="numeric" min="0" step="1" placeholder="例如：900"></div>
+      <div class="field"><label for="hours">每天使用（小時）</label><input id="hours" type="number" inputmode="decimal" min="0" max="24" step="0.5" placeholder="例如：6"></div>
+      <div class="field"><label for="quantity">數量</label><input id="quantity" type="number" inputmode="numeric" min="1" step="1" value="1"></div>
+      <div class="field"><label for="daysUse">每月使用天數</label><input id="daysUse" type="number" inputmode="numeric" min="0" max="31" step="1" value="30"></div>
+    </div>
+    <div class="actions"><button type="button" class="btn" id="addAppliance">＋ 加入電器</button></div>
+    <div class="toast" id="apToast" aria-live="polite"></div>
+  </div>
+  <h3 class="section-title">我的電器清單</h3>
+  <div class="cards">
+    <div class="card"><svg class="draw ico" viewBox="0 0 24 32" aria-hidden="true"><use href="#i-bolt" width="24" height="32"/></svg><div class="kicker">電器每月預估總用電</div><div class="metric" id="apTotal">0</div><div class="unit">度（kWh）</div></div>
+    <div class="card"><svg class="draw ico" style="animation-delay:.5s" viewBox="0 0 32 32" aria-hidden="true"><use href="#i-coin" width="32" height="32"/></svg><div class="kicker">電器每月預估電費</div><div class="metric" id="apCost">—</div><div class="unit">NT$（依設定單價）</div></div>
+    <div class="card"><svg class="draw ico" style="animation-delay:1s" viewBox="0 0 32 32" aria-hidden="true"><use href="#i-plug" width="32" height="32"/></svg><div class="kicker">已登記電器</div><div class="metric" id="apCount">0</div><div class="unit">項</div></div>
+  </div>
+  <div class="panel" style="margin-top:13px">
+    <div class="table-wrap"><table><thead><tr><th>電器</th><th>功率</th><th>使用習慣</th><th>月耗電</th><th>操作</th></tr></thead><tbody id="apRows"></tbody></table></div>
+    <div class="empty" id="apEmpty">
+      <svg class="draw" viewBox="0 0 60 60" aria-hidden="true"><g class="an-sway"><path d="M30 38V24"/><path class="fs" d="M30 29C20 29 14 23 14 15C23 15 30 20 30 29Z"/><path class="fs" d="M30 25C30 16 36 10 46 10C46 19 40 25 30 25Z"/></g><path class="fw" d="M18 38H42L39 56H21Z"/></svg>
+      還沒有電器資料，先從最常使用的冷氣或除濕機開始吧！</div>
+    <div class="hint">估算公式：功率（W）÷ 1,000 × 每日使用小時 × 每月使用天數 × 數量。實際耗電會受運轉模式、環境及變頻調節影響。</div>
+  </div>
+</section>
+</main>
+<div class="footer">資料保存在這台裝置的瀏覽器中，建議定期下載 CSV 備份。<br>電費及電器耗電皆為估算值，實際金額以房東計費方式與電費帳單為準。</div>
+</div>
+
+<!-- 刪除確認視窗 -->
+<div class="modal" id="modal" hidden>
+  <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="mTitle" aria-describedby="mDetail">
+    <svg class="draw" viewBox="0 0 60 60" aria-hidden="true"><path d="M24 11V7h12v4" /><rect class="fwd" x="8" y="11" width="44" height="7" rx="3"/><path class="fw" d="M12 18H48L45 52H15Z"/><path d="M24 25V45M30 25V45M36 25V45" stroke-width="1.6" opacity=".6"/></svg>
+    <h4 id="mTitle">要刪除嗎？</h4>
+    <div class="detail" id="mDetail"></div>
+    <p>刪除後，相關的用電統計會重新計算。<br>刪除完成後 7 秒內可以按「復原」。</p>
+    <div class="row"><button type="button" class="btn sage" id="mCancel">先不要</button><button type="button" class="btn danger" id="mOk">確定刪除</button></div>
+  </div>
+</div>
+<div class="snack" id="snack" role="status" aria-live="polite" hidden><span id="snackMsg"></span><button type="button" id="snackUndo">復原</button></div>
+
+<script>
+const $=id=>document.getElementById(id),KEY='my-electricity-diary-v2';
+let data={entries:[],appliances:[],rate:'',budget:''};
+try{data={...data,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch(e){}
+if(!Array.isArray(data.entries))data.entries=[];if(!Array.isArray(data.appliances))data.appliances=[];
+/* 確保每筆資料都有字串 id（舊資料可能沒有或是數字），刪除才找得到 */
+data.entries.forEach((e,i)=>{if(e.id==null||e.id==='')e.id='e'+Date.now()+'-'+i;e.id=String(e.id)});
+data.appliances.forEach((a,i)=>{if(a.id==null||a.id==='')a.id='a'+Date.now()+'-'+i;a.id=String(a.id)});
+const today=new Date(),monthKey=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+function fmtDate(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+$('date').value=fmtDate(today);$('rate').value=data.rate;$('budget').value=data.budget;
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){}}
+function sorted(){return [...data.entries].sort((a,b)=>a.date.localeCompare(b.date))}
+function money(v){return 'NT$'+Math.round(v).toLocaleString('zh-TW')}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function replay(el){el.classList.remove('replay');void el.offsetWidth;el.classList.add('replay')}
+function say(el,msg,err){el.textContent=msg;el.classList.toggle('err',!!err);el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop')}
+
+function intervalStats(arr){return arr.map((e,i)=>{if(!i)return {...e,used:null,days:0,avg:null};let days=(new Date(e.date+'T00:00:00')-new Date(arr[i-1].date+'T00:00:00'))/86400000,used=e.reading-arr[i-1].reading;return {...e,used,days,avg:days>0&&used>=0?used/days:null}})}
+function monthlyUsage(arr){
+  const months={};
+  for(let i=1;i<arr.length;i++){
+    const a=arr[i-1],b=arr[i],days=(new Date(b.date+'T00:00:00')-new Date(a.date+'T00:00:00'))/86400000,used=b.reading-a.reading;
+    if(days<=0||used<0)continue;
+    let cursor=new Date(a.date+'T00:00:00');
+    while(cursor<new Date(b.date+'T00:00:00')){
+      let next=new Date(cursor.getFullYear(),cursor.getMonth()+1,1),end=new Date(b.date+'T00:00:00'),stop=next<end?next:end;
+      let key=`${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,'0')}`;
+      months[key]=(months[key]||0)+used*((stop-cursor)/86400000)/days;cursor=stop;
+    }
+  }
+  return months;
+}
+function calc(){
+  const arr=sorted(),withStats=intervalStats(arr),monthly=monthlyUsage(arr),usage=monthly[monthKey]||0,rate=Number(data.rate)||0,budget=Number(data.budget)||0;
+  const last=withStats.at(-1);$('avg').textContent=last?.avg!=null?last.avg.toFixed(2):'—';
+  $('monthUse').textContent=usage.toFixed(1);$('monthCost').textContent=rate?money(usage*rate):'—';
+  $('billUse').textContent=usage.toFixed(1);$('billCost').textContent=rate?money(usage*rate):'—';$('remaining').textContent=budget&&rate?money(budget-usage*rate):'—';
+  const cost=usage*rate,pct=budget?cost/budget*100:0;$('budgetText').textContent=budget?(pct.toFixed(0)+'% 已使用'):'尚未設定預算';
+  $('budgetFill').style.width=Math.min(100,pct)+'%';$('budgetFill').classList.toggle('over',pct>100);
+  $('budgetHint').textContent=!budget?'到「電費與預算」設定每月預算。':!rate?'請設定每度電費，才能估算預算使用進度。':pct>100?`目前估算已超出預算 ${money(cost-budget)}，留意用電喔！`:`預算還有 ${money(budget-cost)}，慢慢掌握用電就好。`;
+  renderMeters(withStats);renderMonths(monthly,rate);renderAppliances(rate);drawChart(withStats);
+}
+function renderMeters(arr){
+  let body=$('records');body.innerHTML='';$('empty').style.display=arr.length?'none':'block';
+  arr.slice().reverse().forEach(e=>{
+    let tr=document.createElement('tr');
+    tr.innerHTML=`<td data-label="日期">${esc(e.date)}</td><td data-label="電錶度數"><b>${Number(e.reading).toLocaleString('zh-TW')}</b></td><td data-label="期間用電">${e.used==null?'起始紀錄':e.used.toFixed(1)+' 度'}</td><td data-label="平均／天">${e.avg==null?'—':e.avg.toFixed(2)+' 度'}</td><td data-label="備註">${esc(e.memo||'—')}</td><td class="act"><button type="button" class="btn pink small" data-del="${esc(e.id)}">刪除</button></td>`;
+    body.appendChild(tr)
+  })
+}
+function renderMonths(months,rate){
+  let body=$('monthlyRows');body.innerHTML='';let keys=Object.keys(months).sort().reverse();
+  if(!keys.length){body.innerHTML='<tr><td class="msg" colspan="3">累積兩筆以上抄表紀錄後，就會顯示月統計。</td></tr>';return}
+  keys.forEach(k=>{let tr=document.createElement('tr');tr.innerHTML=`<td data-label="月份">${k}</td><td data-label="估算用電">${months[k].toFixed(1)} 度</td><td data-label="估算電費">${rate?money(months[k]*rate):'請設定單價'}</td>`;body.appendChild(tr)})
+}
+function renderAppliances(rate){
+  let body=$('apRows');body.innerHTML='';let total=0;$('apEmpty').style.display=data.appliances.length?'none':'block';
+  data.appliances.forEach(a=>{
+    let kwh=a.watt/1000*a.hours*a.days*a.qty;total+=kwh;let tr=document.createElement('tr');
+    tr.innerHTML=`<td data-label="電器"><b>${esc(a.name)}</b></td><td data-label="功率">${a.watt} W</td><td data-label="使用習慣">${a.hours} 小時／天 × ${a.days} 天 × ${a.qty} 台</td><td data-label="月耗電">${kwh.toFixed(1)} 度</td><td class="act"><button type="button" class="btn pink small" data-apdel="${esc(a.id)}">刪除</button></td>`;
+    body.appendChild(tr)
+  });
+  $('apTotal').textContent=total.toFixed(1);$('apCost').textContent=rate?money(total*rate):'—';$('apCount').textContent=data.appliances.length
+}
+
+/* ---------- 刪除：確認視窗（防呆）＋ 復原 ---------- */
+let pendingYes=null,lastFocus=null,snackTimer=null,snackUndo=null;
+function askDelete(o){
+  pendingYes=o.onYes;lastFocus=document.activeElement;
+  $('mTitle').textContent=o.title;$('mDetail').textContent=o.detail;
+  $('modal').hidden=false;$('mCancel').focus()
+}
+function closeModal(){$('modal').hidden=true;pendingYes=null;if(lastFocus&&lastFocus.focus&&document.contains(lastFocus))lastFocus.focus()}
+$('mCancel').onclick=closeModal;
+$('mOk').onclick=()=>{const f=pendingYes;$('modal').hidden=true;pendingYes=null;if(f)f()};
+$('modal').addEventListener('click',e=>{if(e.target===$('modal'))closeModal()});
+document.addEventListener('keydown',e=>{
+  if($('modal').hidden)return;
+  if(e.key==='Escape'){closeModal();return}
+  if(e.key==='Tab'){const f=[$('mCancel'),$('mOk')],i=f.indexOf(document.activeElement);e.preventDefault();f[(i+(e.shiftKey?f.length-1:1))%f.length].focus()}
+});
+function snack(msg,undo){
+  clearTimeout(snackTimer);snackUndo=undo;$('snackMsg').textContent=msg;
+  const s=$('snack');s.hidden=false;s.style.animation='none';void s.offsetWidth;s.style.animation='';
+  snackTimer=setTimeout(()=>{s.hidden=true;snackUndo=null},7000)
+}
+$('snackUndo').onclick=()=>{const f=snackUndo;clearTimeout(snackTimer);$('snack').hidden=true;snackUndo=null;if(f)f()};
+
+$('records').addEventListener('click',ev=>{
+  const b=ev.target.closest('[data-del]');if(!b)return;
+  const en=data.entries.find(x=>String(x.id)===b.dataset.del);if(!en)return;
+  askDelete({title:'要刪除這筆抄表紀錄嗎？',detail:`${en.date}　電錶度數 ${Number(en.reading).toLocaleString('zh-TW')}${en.memo?'　（'+en.memo+'）':''}`,onYes:()=>{
+    const i=data.entries.findIndex(x=>String(x.id)===String(en.id));if(i<0)return;
+    const [rm]=data.entries.splice(i,1);persist();calc();
+    snack(`已刪除 ${rm.date} 的紀錄`,()=>{data.entries.push(rm);persist();calc()})
+  }})
+});
+$('apRows').addEventListener('click',ev=>{
+  const b=ev.target.closest('[data-apdel]');if(!b)return;
+  const ap=data.appliances.find(x=>String(x.id)===b.dataset.apdel);if(!ap)return;
+  askDelete({title:'要刪除這項電器嗎？',detail:`${ap.name}　${ap.watt} W`,onYes:()=>{
+    const i=data.appliances.findIndex(x=>String(x.id)===String(ap.id));if(i<0)return;
+    const [rm]=data.appliances.splice(i,1);persist();calc();
+    snack(`已刪除「${rm.name}」`,()=>{data.appliances.splice(Math.min(i,data.appliances.length),0,rm);persist();calc()})
+  }})
+});
+
+/* 折線圖：森林綠線條＋霧藍色塊，只畫最近 8 個區間 */
+const FONT='"jf-openhuninn","Huninn","Noto Sans TC","PingFang TC",sans-serif';
+function drawChart(arr){
+  let c=$('chart'),ctx=c.getContext('2d'),dpr=window.devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;
+  if(!w||!h)return;
+  c.width=w*dpr;c.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+  let pts=arr.filter(e=>e.avg!=null).map(e=>({label:e.date.slice(5),v:e.avg})).slice(-8);
+  if(!pts.length){ctx.fillStyle='#78826F';ctx.font='14px '+FONT;ctx.textAlign='center';ctx.fillText('再累積一次抄表紀錄，就能看見用電趨勢',w/2,h/2);return}
+  let max=Math.max(1,...pts.map(p=>p.v))*1.25,L=34,R=14,T=16,B=30,PAD=pts.length>1?16:0;
+  ctx.lineWidth=1;ctx.strokeStyle='#E4DDCB';ctx.fillStyle='#78826F';ctx.font='11px '+FONT;ctx.textAlign='right';ctx.setLineDash([4,4]);
+  for(let i=0;i<=4;i++){let y=T+(h-T-B)*i/4;ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(w-R,y);ctx.stroke();ctx.fillText((max*(1-i/4)).toFixed(1),L-6,y+4)}
+  ctx.setLineDash([]);
+  let x=i=>L+PAD+(pts.length===1?(w-L-R)/2:i*(w-L-R-PAD*2)/(pts.length-1)),y=v=>T+(h-T-B)*(1-v/max),base=h-B;
+  if(pts.length>1){ctx.beginPath();ctx.moveTo(x(0),base);pts.forEach((p,i)=>ctx.lineTo(x(i),y(p.v)));ctx.lineTo(x(pts.length-1),base);ctx.closePath();ctx.fillStyle='#DCE8E9';ctx.fill()}
+  ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(x(i),y(p.v)):ctx.moveTo(x(i),y(p.v)));ctx.strokeStyle='#647B5B';ctx.lineWidth=2.5;ctx.lineJoin='round';ctx.lineCap='round';ctx.stroke();
+  pts.forEach((p,i)=>{
+    ctx.beginPath();ctx.arc(x(i),y(p.v),5.5,0,Math.PI*2);ctx.fillStyle='#F2D99A';ctx.fill();ctx.strokeStyle='#647B5B';ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle='#3E4A3A';ctx.textAlign='center';ctx.font='11px '+FONT;ctx.fillText(p.v.toFixed(1),x(i),y(p.v)-11);
+    ctx.fillStyle='#66725F';ctx.fillText(p.label,x(i),h-9)
+  })
+}
+
+/* 分頁切換 */
+const HERO={
+  home:['今天也好好過生活',''],
+  meter:['來抄一下電錶吧','輸入電錶上的累積度數，小日子會幫你算出這段時間用了多少。'],
+  bill:['荷包的小小心願','設定每度電費與每月預算，看看這個月的電費走到哪裡了。'],
+  appliance:['誰最愛吃電呢？','登記家裡的電器，估算每月耗電，找出省電的小機會。']
+};
+const tabBtns=[...document.querySelectorAll('.tab')];
+window.showTab=function(tabId,focus){
+  if(!document.getElementById(tabId)||!HERO[tabId])return;
+  tabBtns.forEach(b=>{const on=b.dataset.tab===tabId;b.setAttribute('aria-selected',on);b.tabIndex=on?0:-1;if(on){if(focus)b.focus();b.scrollIntoView({inline:'center',block:'nearest'})}});
+  document.querySelectorAll('.section').forEach(p=>p.classList.toggle('active',p.id===tabId));
+  $('hero').dataset.tab=tabId;$('greeting').textContent=HERO[tabId][0];$('heroDesc').textContent=HERO[tabId][1];
+  replay($('scenes'));replay($('heroText'));
+  window.scrollTo({top:0});
+  if(tabId==='home')drawChart(intervalStats(sorted()));
+};
+tabBtns.forEach((b,i)=>{
+  b.addEventListener('click',()=>showTab(b.dataset.tab));
+  b.addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();showTab(tabBtns[(i+(e.key==='ArrowRight'?1:tabBtns.length-1))%tabBtns.length].dataset.tab,true)}
+  })
+});
+$('scenes').addEventListener('animationend',e=>{if(e.target===$('scenes'))$('scenes').classList.remove('replay')});
+
+/* 儲存與操作 */
+$('saveMeter').onclick=()=>{
+  let date=$('date').value,raw=$('reading').value,reading=Number(raw),t=$('meterToast');
+  if(!date||raw.trim()===''||!Number.isFinite(reading)||reading<0){say(t,'請填寫正確的日期與電錶度數。',1);return}
+  if(data.entries.some(e=>e.date===date)){say(t,'這一天已有紀錄，請先刪除舊紀錄再新增。',1);return}
+  let arr=sorted(),prev=arr.filter(e=>e.date<date).at(-1),next=arr.find(e=>e.date>date);
+  if((prev&&reading<prev.reading)||(next&&reading>next.reading)){say(t,'度數需介於前後兩次紀錄之間，請確認輸入。',1);return}
+  data.entries.push({id:Date.now().toString(),date,reading,memo:$('memo').value.trim()});persist();calc();$('reading').value='';$('memo').value='';say(t,'紀錄成功收進電力簿！')
+};
+$('saveSettings').onclick=()=>{data.rate=$('rate').value;data.budget=$('budget').value;persist();calc();say($('billToast'),'電費設定已儲存！')};
+$('addAppliance').onclick=()=>{
+  let name=$('apName').value.trim(),watt=Number($('watt').value),hours=Number($('hours').value),qty=Number($('quantity').value),days=Number($('daysUse').value),t=$('apToast');
+  if(!name||!$('watt').value||!$('hours').value||watt<=0||hours<0||hours>24||qty<1||days<0||days>31){say(t,'請確認電器名稱、功率、使用時數、數量與天數。',1);return}
+  data.appliances.push({id:Date.now().toString(),name,watt,hours,qty,days});persist();calc();
+  $('apName').value='';$('watt').value='';$('hours').value='';$('quantity').value='1';$('daysUse').value='30';say(t,'已加入電器清單！')
+};
+$('export').onclick=()=>{
+  if(!data.entries.length){say($('meterToast'),'目前沒有可下載的紀錄。',1);return}
+  let arr=intervalStats(sorted()),rows=[['日期','電錶累積度數(kWh)','期間用電(kWh)','平均每日用電(kWh)','備註']];
+  arr.forEach(e=>rows.push([e.date,e.reading,e.used??'',e.avg==null?'':e.avg.toFixed(2),e.memo||'']));
+  let csv='﻿'+rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n'),
+  url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'})),a=document.createElement('a');
+  a.href=url;a.download='我的用電紀錄.csv';a.click();URL.revokeObjectURL(url)
+};
+window.addEventListener('resize',()=>{if($('home').classList.contains('active'))drawChart(intervalStats(sorted()))});
+persist();calc();
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{if($('home').classList.contains('active'))drawChart(intervalStats(sorted()))});
+</script></body></html>
